@@ -17,7 +17,7 @@ import { KpiCard } from '@/components/ui/KpiCard';
 import { AssetTypeIcon } from '@/components/ui/AssetTypeIcon';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { showToast } from '@/components/ui/Toast';
-import { assets, relationships } from '@/data/estate';
+import { getAssets as assets, getRelationships as relationships } from '@/lib/estateStore';
 import { calculateImpact, calculateUpstreamImpact, getDownstreamEdges, getUpstreamEdges } from '@/lib/graph';
 import { apiService } from '@/services/api';
 import { generateAiOverview } from '@/lib/aiService';

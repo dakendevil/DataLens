@@ -15,16 +15,14 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useSearchParams } from 'react-router-dom';
-import { Search, RotateCcw, Filter, GitBranch, ArrowUp, ArrowDown, Eye } from 'lucide-react';
+import { Search, RotateCcw, GitBranch, ArrowUp, ArrowDown, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { AssetTypeIcon, assetTypeIcons } from '@/components/ui/AssetTypeIcon';
-import { assets, relationships } from '@/data/estate';
+import { AssetTypeIcon } from '@/components/ui/AssetTypeIcon';
+import { getAssets, getAssetById, getRelationships } from '@/lib/estateStore';
 import { getGraphStats, getDownstreamEdges, getUpstreamEdges } from '@/lib/graph';
 import type { AssetType, Criticality, Asset } from '@/types';
 import { clsx } from 'clsx';
-
-const assetMap = new Map(assets.map((a) => [a.id, a]));
 
 const typeColors: Record<AssetType, string> = {
   File: '#6366f1',
@@ -36,16 +34,13 @@ const typeColors: Record<AssetType, string> = {
   Model: '#8b5cf6',
 };
 
-// Layered layout
-function computeLayout() {
-  // Determine layers via topological grouping based on data flow
+function computeLayout(assets: Asset[], relationships: ReturnType<typeof getRelationships>) {
   const layers: string[][] = [];
   const assigned = new Set<string>();
 
-  // Root nodes (no incoming edges)
   const roots = assets.filter((a) => !relationships.some((r) => r.target === a.id));
   let current = roots.map((a) => a.id);
-  if (current.length === 0) current = [assets[0].id];
+  if (current.length === 0) current = [assets[0]?.id].filter(Boolean) as string[];
 
   while (current.length > 0) {
     layers.push(current);
@@ -54,7 +49,6 @@ function computeLayout() {
     for (const id of current) {
       for (const edge of getDownstreamEdges(id)) {
         if (!assigned.has(edge.target) && !next.includes(edge.target)) {
-          // Check all upstream assigned
           const upstream = getUpstreamEdges(edge.target);
           if (upstream.every((u) => assigned.has(u.source))) {
             next.push(edge.target);
@@ -62,7 +56,6 @@ function computeLayout() {
         }
       }
     }
-    // Also add unassigned nodes that have all upstream assigned
     for (const asset of assets) {
       if (assigned.has(asset.id) || next.includes(asset.id)) continue;
       const upstream = getUpstreamEdges(asset.id);
@@ -73,7 +66,6 @@ function computeLayout() {
     current = [...new Set(next)];
   }
 
-  // Collect any unassigned
   for (const a of assets) {
     if (!assigned.has(a.id)) {
       layers.push([a.id]);
@@ -98,8 +90,6 @@ function computeLayout() {
 
   return positions;
 }
-
-const layoutPositions = computeLayout();
 
 function AssetNode({ data, selected }: { data: { asset: Asset; highlighted?: boolean; dimmed?: boolean }; selected: boolean }) {
   const { asset, highlighted, dimmed } = data;
@@ -142,17 +132,25 @@ export function LineagePage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [highlightMode, setHighlightMode] = useState<'none' | 'upstream' | 'downstream'>('none');
 
+  const allAssets = getAssets();
+  const allRelationships = getRelationships();
+
+  const layoutPositions = useMemo(
+    () => computeLayout(allAssets, allRelationships),
+    [allAssets, allRelationships]
+  );
+
   const initialNodes: Node[] = useMemo(() => {
-    return assets.map((asset) => ({
+    return allAssets.map((asset) => ({
       id: asset.id,
       type: 'asset',
       position: layoutPositions.get(asset.id) ?? { x: 0, y: 0 },
       data: { asset },
     }));
-  }, []);
+  }, [allAssets, layoutPositions]);
 
   const initialEdges: Edge[] = useMemo(() => {
-    return relationships.map((r) => ({
+    return allRelationships.map((r) => ({
       id: r.id,
       source: r.source,
       target: r.target,
@@ -164,12 +162,11 @@ export function LineagePage() {
         strokeWidth: 1.5,
       },
     }));
-  }, [showConfidence]);
+  }, [allRelationships, showConfidence]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-  // Load asset from URL
   useEffect(() => {
     const assetParam = searchParams.get('asset');
     if (assetParam) {
@@ -178,12 +175,10 @@ export function LineagePage() {
     }
   }, [searchParams]);
 
-  // Compute highlight sets
   const { upstreamSet, downstreamSet } = useMemo(() => {
     if (!selectedId) return { upstreamSet: new Set<string>(), downstreamSet: new Set<string>() };
     const up = new Set<string>();
     const down = new Set<string>();
-    // BFS upstream
     const upQueue = [selectedId];
     while (upQueue.length) {
       const id = upQueue.shift()!;
@@ -194,7 +189,6 @@ export function LineagePage() {
         }
       }
     }
-    // BFS downstream
     const downQueue = [selectedId];
     while (downQueue.length) {
       const id = downQueue.shift()!;
@@ -208,19 +202,16 @@ export function LineagePage() {
     return { upstreamSet: up, downstreamSet: down };
   }, [selectedId]);
 
-  // Apply highlighting and filters
   useEffect(() => {
     const updatedNodes = initialNodes.map((node) => {
       const asset = node.data.asset as Asset;
       let dimmed = false;
       let highlighted = false;
 
-      // Apply filters
       if (search && !asset.name.toLowerCase().includes(search.toLowerCase())) dimmed = true;
       if (typeFilter && asset.type !== typeFilter) dimmed = true;
       if (critFilter && asset.criticality !== critFilter) dimmed = true;
 
-      // Apply highlighting
       if (selectedId) {
         if (highlightMode === 'upstream') {
           if (node.id === selectedId) highlighted = true;
@@ -256,18 +247,8 @@ export function LineagePage() {
     setSearchParams({});
   }
 
-  function highlightUpstream() {
-    if (!selectedId) return;
-    setHighlightMode(highlightMode === 'upstream' ? 'none' : 'upstream');
-  }
-
-  function highlightDownstream() {
-    if (!selectedId) return;
-    setHighlightMode(highlightMode === 'downstream' ? 'none' : 'downstream');
-  }
-
   const stats = getGraphStats();
-  const selectedAsset = selectedId ? assetMap.get(selectedId) : null;
+  const selectedAsset = selectedId ? getAssetById(selectedId) : null;
   const types: AssetType[] = ['File', 'Pipeline', 'Table', 'Database', 'API', 'Report', 'Model'];
   const crits: Criticality[] = ['Critical', 'High', 'Medium', 'Low'];
 
@@ -288,7 +269,6 @@ export function LineagePage() {
         </div>
       </div>
 
-      {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-800/80 bg-zinc-900/50 p-3">
         <div className="relative flex-1 min-w-[180px]">
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
@@ -314,10 +294,10 @@ export function LineagePage() {
           <Eye className="h-3 w-3" /> Confidence
         </button>
         <div className="h-5 w-px bg-zinc-700" />
-        <Button variant="ghost" size="sm" onClick={highlightUpstream} disabled={!selectedId}>
+        <Button variant="ghost" size="sm" onClick={() => selectedId && setHighlightMode(highlightMode === 'upstream' ? 'none' : 'upstream')} disabled={!selectedId}>
           <ArrowUp className="h-3.5 w-3.5" /> Upstream
         </Button>
-        <Button variant="ghost" size="sm" onClick={highlightDownstream} disabled={!selectedId}>
+        <Button variant="ghost" size="sm" onClick={() => selectedId && setHighlightMode(highlightMode === 'downstream' ? 'none' : 'downstream')} disabled={!selectedId}>
           <ArrowDown className="h-3.5 w-3.5" /> Downstream
         </Button>
         <Button variant="ghost" size="sm" onClick={resetGraph}>
@@ -325,7 +305,6 @@ export function LineagePage() {
         </Button>
       </div>
 
-      {/* Selected asset info */}
       {selectedAsset && (
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-red-600/20 bg-red-600/5 px-4 py-2.5 animate-slide-up">
           <AssetTypeIcon type={selectedAsset.type} className="h-4 w-4 text-red-400" />
@@ -342,7 +321,6 @@ export function LineagePage() {
         </div>
       )}
 
-      {/* Graph */}
       <div className="relative h-[600px] overflow-hidden rounded-xl border border-zinc-800/80 bg-[#0d0e13]">
         <ReactFlow
           nodes={nodes}
@@ -369,7 +347,6 @@ export function LineagePage() {
           />
         </ReactFlow>
 
-        {/* Legend */}
         <div className="absolute bottom-3 left-3 rounded-lg border border-zinc-800 bg-zinc-900/90 p-3 backdrop-blur">
           <p className="mb-2 text-xs font-semibold text-zinc-400">Asset Types</p>
           <div className="grid grid-cols-2 gap-1.5">

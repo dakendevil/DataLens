@@ -4,7 +4,7 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
 import { KpiCard } from '@/components/ui/KpiCard';
-import { assets } from '@/data/estate';
+import { getAssets as assets } from '@/lib/estateStore';
 import { getGraphStats, getMostConnectedAsset, getConnectionCount, calculateImpact, getConnectionsByType } from '@/lib/graph';
 
 const COLORS = ['#dc2626', '#f97316', '#eab308', '#0ea5e9', '#10b981', '#8b5cf6', '#ec4899'];

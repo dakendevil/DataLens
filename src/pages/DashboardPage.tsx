@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton, KpiSkeleton } from '@/components/ui/Skeleton';
 import { apiService } from '@/services/api';
-import { assets } from '@/data/estate';
+import { getAssets } from '@/lib/estateStore';
 import { calculateImpact, getGraphStats, getMostConnectedAsset } from '@/lib/graph';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, CartesianGrid } from 'recharts';
 

@@ -12,7 +12,7 @@ import { AiInsightsPage } from '@/pages/AiInsightsPage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage';
 import { ModernizationPage } from '@/pages/ModernizationPage';
 import { SettingsPage } from '@/pages/SettingsPage';
-import { assets } from '@/data/estate';
+import { loadEstate, getAssets } from '@/lib/estateStore';
 
 function AppRoutes({ onOpenSearch, demoMode, onToggleDemo }: { onOpenSearch: () => void; demoMode: boolean; onToggleDemo: () => void }) {
   return (
@@ -47,6 +47,7 @@ function AppInner() {
 
   // Keyboard shortcut for command palette
   useEffect(() => {
+    loadEstate();
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
@@ -70,7 +71,7 @@ function AppInner() {
   }, []);
 
   const runDemo = useCallback(() => {
-    const asset = assets.find((a) => a.id === 'customer_cleaning_etl');
+    const asset = getAssets().find((a) => a.id === 'customer_cleaning_etl');
     if (!asset) return;
     showToast('info', `Demo: Opening ${asset.name}...`);
     setTimeout(() => {

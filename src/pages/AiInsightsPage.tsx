@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { AssetTypeIcon } from '@/components/ui/AssetTypeIcon';
-import { assets } from '@/data/estate';
+import { getAssets as assets } from '@/lib/estateStore';
 import { apiService } from '@/services/api';
 import { calculateImpact } from '@/lib/graph';
 import type { AiOverview } from '@/types';

@@ -1,29 +1,33 @@
 import type { Asset, ImpactResult, ImpactNode, Relationship } from '@/types';
-import { assets, relationships } from '@/data/estate';
+import { getAssets, getRelationships, getAssetById } from '@/lib/estateStore';
 
-const assetMap = new Map(assets.map((a) => [a.id, a]));
+function assetMap(): Map<string, Asset> {
+  return new Map(getAssets().map((a) => [a.id, a]));
+}
 
 export function getAsset(id: string): Asset | undefined {
-  return assetMap.get(id);
+  return getAssetById(id);
 }
 
 export function getDownstreamEdges(id: string): Relationship[] {
-  return relationships.filter((r) => r.source === id);
+  return getRelationships().filter((r) => r.source === id);
 }
 
 export function getUpstreamEdges(id: string): Relationship[] {
-  return relationships.filter((r) => r.target === id);
+  return getRelationships().filter((r) => r.target === id);
 }
 
 export function getDirectDownstream(id: string): Asset[] {
+  const am = assetMap();
   return getDownstreamEdges(id)
-    .map((r) => assetMap.get(r.target))
+    .map((r) => am.get(r.target))
     .filter((a): a is Asset => !!a);
 }
 
 export function getDirectUpstream(id: string): Asset[] {
+  const am = assetMap();
   return getUpstreamEdges(id)
-    .map((r) => assetMap.get(r.source))
+    .map((r) => am.get(r.source))
     .filter((a): a is Asset => !!a);
 }
 
@@ -167,6 +171,8 @@ function buildExplanation(
 }
 
 export function getGraphStats() {
+  const assets = getAssets();
+  const relationships = getRelationships();
   const highConfidence = relationships.filter((r) => r.confidence >= 0.8).length;
   return {
     totalAssets: assets.length,
@@ -179,6 +185,7 @@ export function getGraphStats() {
 }
 
 export function getMostConnectedAsset() {
+  const relationships = getRelationships();
   const counts = new Map<string, number>();
   for (const r of relationships) {
     counts.set(r.source, (counts.get(r.source) ?? 0) + 1);
@@ -196,6 +203,7 @@ export function getMostConnectedAsset() {
 }
 
 export function getConnectionsByType(): Record<string, number> {
+  const relationships = getRelationships();
   const counts: Record<string, number> = {};
   for (const r of relationships) {
     counts[r.relationshipType] = (counts[r.relationshipType] ?? 0) + 1;
@@ -204,6 +212,7 @@ export function getConnectionsByType(): Record<string, number> {
 }
 
 export function getConnectionCount(assetId: string): number {
+  const relationships = getRelationships();
   let count = 0;
   for (const r of relationships) {
     if (r.source === assetId || r.target === assetId) count++;

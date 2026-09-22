@@ -7,7 +7,7 @@ import { Drawer } from '@/components/ui/Drawer';
 import { AssetTypeIcon } from '@/components/ui/AssetTypeIcon';
 import { Skeleton, EmptyState } from '@/components/ui/Skeleton';
 import { showToast } from '@/components/ui/Toast';
-import { assets as allAssets, relationships } from '@/data/estate';
+import { getAssets as allAssets, getRelationships as relationships } from '@/lib/estateStore';
 import { getDirectDownstream, getDirectUpstream, getConnectionCount } from '@/lib/graph';
 import { apiService } from '@/services/api';
 import { generateAiOverview } from '@/lib/aiService';

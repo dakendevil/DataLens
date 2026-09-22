@@ -3,7 +3,7 @@ import { Wrench, AlertTriangle, Archive, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { showToast } from '@/components/ui/Toast';
-import { assets as initialAssets } from '@/data/estate';
+import { getAssets as initialAssets } from '@/lib/estateStore';
 import { calculateImpact } from '@/lib/graph';
 import type { ModernizationStatus, Asset } from '@/types';
 

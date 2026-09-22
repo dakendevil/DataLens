@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, FileText, User, Layers, GitBranch } from 'lucide-react';
-import { assets, relationships } from '@/data/estate';
+import { getAssets, getRelationships } from '@/lib/estateStore';
 import { AssetTypeIcon } from '@/components/ui/AssetTypeIcon';
 
 interface CommandPaletteProps {
@@ -25,6 +25,8 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const results = useMemo<SearchResult[]>(() => {
     if (!query.trim()) return [];
     const q = query.toLowerCase();
+    const assets = getAssets();
+    const relationships = getRelationships();
 
     const assetResults: SearchResult[] = assets
       .filter((a) => a.name.toLowerCase().includes(q) || a.type.toLowerCase().includes(q))
@@ -161,7 +163,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                   <p className="text-xs text-zinc-500">{r.sublabel}</p>
                 </div>
                 {r.type === 'asset' && (
-                  <AssetTypeIcon type={assets.find((a) => `asset-${a.id}` === r.id)?.type ?? 'File'} className="h-4 w-4 text-zinc-600" />
+                  <AssetTypeIcon type={getAssets().find((a) => `asset-${a.id}` === r.id)?.type ?? 'File'} className="h-4 w-4 text-zinc-600" />
                 )}
               </button>
             );

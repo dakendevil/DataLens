@@ -1,7 +1,8 @@
-import { assets, relationships } from '@/data/estate';
-import type { Asset, AiOverview, ImpactResult } from '@/types';
+import type { Asset, AiOverview, ImpactResult, Relationship } from '@/types';
 import { calculateImpact, getAsset, getGraphStats } from '@/lib/graph';
 import { generateAiOverview } from '@/lib/aiService';
+import { getAssets, getRelationships } from '@/lib/estateStore';
+import { supabase } from '@/lib/supabase';
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -10,7 +11,7 @@ function delay(ms: number): Promise<void> {
 export const apiService = {
   async getAssets(): Promise<Asset[]> {
     await delay(300);
-    return [...assets];
+    return getAssets();
   },
 
   async getAsset(id: string): Promise<Asset | null> {
@@ -18,9 +19,9 @@ export const apiService = {
     return getAsset(id) ?? null;
   },
 
-  async getRelationships() {
+  async getRelationships(): Promise<Relationship[]> {
     await delay(300);
-    return [...relationships];
+    return getRelationships();
   },
 
   async getLineage(id: string) {
@@ -29,8 +30,8 @@ export const apiService = {
     if (!asset) return null;
     return {
       asset,
-      upstream: relationships.filter((r) => r.target === id),
-      downstream: relationships.filter((r) => r.source === id),
+      upstream: getRelationships().filter((r) => r.target === id),
+      downstream: getRelationships().filter((r) => r.source === id),
     };
   },
 
@@ -42,6 +43,8 @@ export const apiService = {
   async getAnalytics() {
     await delay(300);
     const stats = getGraphStats();
+    const assets = getAssets();
+    const relationships = getRelationships();
 
     const byType: Record<string, number> = {};
     const byCriticality: Record<string, number> = {};
@@ -74,5 +77,13 @@ export const apiService = {
     const asset = getAsset(assetId);
     if (!asset) throw new Error('Asset not found');
     return generateAiOverview(asset);
+  },
+
+  async updateModernizationStatus(assetId: string, status: string): Promise<void> {
+    const { error } = await supabase
+      .from('assets')
+      .update({ modernization_status: status })
+      .eq('id', assetId);
+    if (error) throw error;
   },
 };
